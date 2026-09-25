@@ -15,6 +15,11 @@
 // base and the head, rendered: the findings, steps and connections added and removed, the writes a
 // trigger now reaches or no longer reaches, and each changed step's neighbours. Nothing here derives
 // any of it.
+//
+// Without a key the step reads each file free and never fails the job: whatever `fail-on`
+// says, findings are warnings, nothing is compared with the base (comparing two versions is paid),
+// and one notice says what a key adds. A check that cannot be reached or cannot read a file is a
+// warning too. With a key, `fail-on` works as above.
 import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative, sep } from "node:path";
@@ -25,7 +30,7 @@ import { detect } from "./detect.js";
 export const USER_AGENT = "muoto-workflow-action/1";
 export const ENDPOINT = "https://workflow.muoto.xyz/api/check";
 export const BUY = "https://workflow.muoto.xyz/buy.html";
-export const FREE = `No key: this step used the free check, which comes with no guarantees: it may be slow, limited or down. For checks your team can count on, buy a pack at ${BUY} and pass its key from a repository secret.`;
+export const FREE = `No key: this step read each file with the free check and reports what it finds as warnings, so it never fails the job. A key lets this step fail the job on new findings and say what each change did; buy a pack at ${BUY} and pass its key from a repository secret.`;
 const SKIP_DIRS = new Set([".git", "node_modules"]);
 
 // The test the check makes, not a copy of it: the check imports the same module (detect.js), so a
@@ -312,15 +317,16 @@ export async function comment({ api, repository, number, token, body }) {
 }
 
 export async function run({ root, paths, failOn, endpoint, key: apiKey, eventName, eventPath, summaryPath, token, api, repository }, log = console.log) {
+  const free = !apiKey;
   if (failOn !== "new" && failOn !== "findings" && failOn !== "never") {
-    log(annotation("error", {}, `fail-on is "${failOn}": it takes "new", "findings" or "never".`));
-    return 1;
+    log(annotation(free ? "warning" : "error", {}, `fail-on is "${failOn}": it takes "new", "findings" or "never".`));
+    if (!free) return 1;
   }
-  const level = failOn === "never" ? "warning" : "error";
-  if (!apiKey) log(FREE);
-  // Under `new`: the base, or why there is none. With none, every finding is new, and it is said.
+  const level = free || failOn === "never" ? "warning" : "error";
+  if (free) log(annotation("notice", { title: "A key lets this step fail the job on new findings" }, FREE));
+  // Under `new`, with a key: the base, or why there is none. With none, every finding is new, and it is said.
   let base = null;
-  if (failOn === "new") {
+  if (failOn === "new" && !free) {
     const reached = reachBase(root, baseOf(eventName, eventPath));
     if (reached.none) log(annotation("error", { title: "No base to compare with" }, `${reached.none[0].toUpperCase()}${reached.none.slice(1)}. Every finding is counted as new, so this step fails on any finding.`));
     else base = reached.sha;
@@ -329,12 +335,12 @@ export async function run({ root, paths, failOn, endpoint, key: apiKey, eventNam
   const sections = [];
   const reach = (file, answer) => {
     if (answer.unpaid) {
-      log(annotation("error", { file, title: "The key was not accepted" }, answer.unpaid));
+      log(annotation(free ? "warning" : "error", { file, title: "The key was not accepted" }, answer.unpaid));
       log(`Workflow check: the key was not accepted (${answer.unpaid}), so the files were not checked.`);
       return false;
     }
     if (answer.unreached) {
-      log(annotation("error", { file, title: "The workflow check could not be reached" }, `${endpoint}: ${answer.unreached}. Nothing was checked from here on, so this is not a pass.`));
+      log(annotation(free ? "warning" : "error", { file, title: "The workflow check could not be reached" }, `${endpoint}: ${answer.unreached}. Nothing was checked from here on, so this is not a pass.`));
       log(`Workflow check: could not be reached at ${endpoint} (${answer.unreached}), so the files were not checked.`);
       return false;
     }
@@ -366,10 +372,10 @@ export async function run({ root, paths, failOn, endpoint, key: apiKey, eventNam
       // not JSON at the base: nothing was there
     }
     const answer = await post(endpoint, text, apiKey, was);
-    if (!reach(file, answer)) return 1;
+    if (!reach(file, answer)) return free ? 0 : 1;
     if (answer.refused) {
       refused++;
-      log(annotation("error", { file, title: "The workflow check could not read this file" }, answer.refused));
+      log(annotation(free ? "warning" : "error", { file, title: "The workflow check could not read this file" }, answer.refused));
       continue;
     }
     read++;
@@ -387,7 +393,7 @@ export async function run({ root, paths, failOn, endpoint, key: apiKey, eventNam
   }
   const noun = (n, one, many) => `${n} ${n === 1 ? one : many}`;
   const counts =
-    failOn === "new"
+    failOn === "new" && !free
       ? `read ${noun(read, base ? "changed file" : "file", base ? "changed files" : "files")}, ${noun(findings, "new finding", "new findings")}, ${already} already there, ${noun(unchanged, "file", "files")} unchanged`
       : `read ${noun(read, "file", "files")}, ${noun(findings, "finding", "findings")}`;
   const last = `Workflow check: ${counts}, skipped ${noun(skipped, "file", "files")} that ${skipped === 1 ? "is" : "are"} not a workflow the check reads${refused ? `, and could not read ${noun(refused, "file", "files")}` : ""}.${gone ? ` The changes removed ${noun(gone, "finding", "findings")}.` : ""}`;
@@ -401,6 +407,7 @@ export async function run({ root, paths, failOn, endpoint, key: apiKey, eventNam
       if (done.failed) log(annotation("warning", { title: "The summary was not posted on the pull request" }, `${done.failed}. The token needs to be able to write to pull requests (permissions: pull-requests: write).`));
     }
   }
+  if (free) return 0;
   if (refused) return 1;
   return findings && failOn !== "never" ? 1 : 0;
 }

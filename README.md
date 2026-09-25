@@ -15,20 +15,24 @@ Add one step in front of your deploy, after the checkout your workflow already h
 - uses: muoto-xyz/workflow-check@v1
 ```
 
-That is all: nothing to install, no key. Without a key the step uses the free check, which has no
-guarantees, and says so in its log. By default it reads every JSON file in the repository, skips
-the ones that are not workflows, and fails the job only if the change adds a finding.
+That is all: nothing to install. Reading is free: without a key the step reports every finding as
+a warning and never fails the job, and a key (https://workflow.muoto.xyz/buy.html) lets it fail the
+job on new findings and say what each change did, at one check per file read.
+
+With a key, by default it reads every JSON file in the repository, skips the ones that are not
+workflows, and fails the job only if the change adds a finding.
 
 ```yaml
 - uses: muoto-xyz/workflow-check@v1
   with:
     paths: workflows/**/*.json   # a glob from the repository's root; several, one per line
     fail-on: new                 # the default: fail only on what this change adds
+    key: ${{ secrets.MUOTO_KEY }}
 ```
 
 ## Only what the change adds
 
-A workflow your team has run for months may already have findings. With `fail-on: new` those do
+A workflow your team has run for months may already have findings. With a key and `fail-on: new` those do
 not fail the job, and nothing needs to be kept in the repository to say which ones they are: the
 step compares each file with the same file before the change, which git already has.
 
@@ -52,8 +56,8 @@ every finding as new, and fails the job on any finding. It never passes as if no
 | input | default | |
 |---|---|---|
 | `paths` | `**/*.json` | Which files to read. JSON files that are not a workflow the check reads (an n8n workflow, a LangGraph graph, a Dify app's export, or a Power Automate or Logic Apps definition) are skipped and counted. |
-| `fail-on` | `new` | `new` fails the job only on findings the change adds, and shows the ones already there as notices. `findings` fails the job when any file has one; `never` shows them as warnings and passes. |
-| `key` | none | Your team's key, from a repository secret: `key: ${{ secrets.MUOTO_KEY }}`. Each workflow file read spends one check; a file the check cannot read, and a file that is not a workflow, spends none. Buy a pack at https://workflow.muoto.xyz/buy.html. If the key is unknown or has no checks left, the step fails and says so. |
+| `fail-on` | `new` | With a key: `new` fails the job only on findings the change adds, and shows the ones already there as notices. `findings` fails the job when any file has one; `never` shows them as warnings and passes. |
+| `key` | none | Your team's key, from a repository secret: `key: ${{ secrets.MUOTO_KEY }}`. Each workflow file read spends one check; a file the check cannot read, and a file that is not a workflow, spends none. Buy a pack at https://workflow.muoto.xyz/buy.html. If the key is unknown or has no checks left, the step fails and says so. Without a key, findings are warnings, nothing is compared with the base, and the job never fails. |
 | `github-token` | none | A token that can write to pull requests, usually `${{ github.token }}` with `pull-requests: write`. With it, what the change does is posted as one comment on the pull request, and edited on later pushes. |
 | `endpoint` | `https://workflow.muoto.xyz/api/check` | Where the check answers. |
 
@@ -68,12 +72,13 @@ When the changes also removed findings, the line ends with how many: `The change
 Under `findings` and `never` every workflow file is read, and the line reads
 `read 12 files, 3 findings, ...`.
 
-If the check cannot be reached, or answers with an error, the step fails whatever `fail-on` says,
-and says the check could not be reached. A check that did not run is never shown as a pass.
+With a key, if the check cannot be reached, or answers with an error, the step fails whatever
+`fail-on` says, and says the check could not be reached. A check that did not run is never shown as
+a pass. Without a key the same is said as a warning, and the job goes on.
 
 ## What the change does, on the pull request
 
-A raw diff of an n8n workflow is mostly positions and ids. Under `fail-on: new` the step also writes,
+A raw diff of an n8n workflow is mostly positions and ids. With a key, under `fail-on: new` the step also writes,
 for each workflow file the change touched, what the change does to it: the findings it adds and
 removes, the steps and connections added and removed by name, each write a trigger now reaches or
 no longer reaches, and a drawing of the changed steps and their neighbours. It goes to the job's
@@ -163,7 +168,7 @@ about who sent it. Without it, only the row of counts below is kept.
 ## What is sent, and what is kept
 
 - **Sent:** each file that is a workflow the check reads, as it is in your repository, to
-  the endpoint above, one request per file. Under `fail-on: new`, only the files the change touched,
+  the endpoint above, one request per file. With a key, under `fail-on: new`, only the files the change touched,
   each with the same file as it was before the change in the same request. Files that are not workflows are read in the job to
   tell, and never sent. The request carries the user-agent `muoto-workflow-action/1`, your key if
   you gave one, and nothing about your repository or the run.

@@ -10,11 +10,11 @@ inputs:
     required: false
     default: "**/*.json"
   fail-on:
-    description: "`new` fails the job only on findings the change adds: a finding already in the file before the change (the pull request's base, or the commit before the push) is shown as a notice. `findings` fails the job when any file has a finding; `never` reports them as warnings and passes."
+    description: "With a key: `new` fails the job only on findings the change adds: a finding already in the file before the change (the pull request's base, or the commit before the push) is shown as a notice. `findings` fails the job when any file has a finding; `never` reports them as warnings and passes."
     required: false
     default: new
   key:
-    description: "Your team's key, from a repository secret (for example a secret named MUOTO_KEY; the README shows the line). Each file read spends one of the checks your team bought. Without it the step uses the free check, which has no guarantees."
+    description: "Your team's key, from a repository secret (for example a secret named MUOTO_KEY; the README shows the line). Each file read spends one of the checks your team bought. Without it the step reads each file free, reports findings as warnings and never fails the job."
     required: false
     default: ""
   github-token:
