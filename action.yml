@@ -1,0 +1,30 @@
+name: n8n workflow check
+description: Checks n8n, LangGraph, Dify, and Power Automate and Logic Apps workflow files for steps that can never run, branches never taken and fields nothing sets, before they are deployed.
+author: muoto.xyz
+branding:
+  icon: check-circle
+  color: gray-dark
+inputs:
+  paths:
+    description: Which files to read, as a glob from the repository's root (several may be given, one per line or split by commas). JSON files that are not a workflow the check reads are skipped and counted.
+    required: false
+    default: "**/*.json"
+  fail-on:
+    description: "`new` fails the job only on findings the change adds: a finding already in the file before the change (the pull request's base, or the commit before the push) is shown as a notice. `findings` fails the job when any file has a finding; `never` reports them as warnings and passes."
+    required: false
+    default: new
+  key:
+    description: Your team's key, from a repository secret (`key: ${{ secrets.MUOTO_KEY }}`). Each file read spends one of the checks your team bought. Without it the step uses the free check, which has no guarantees.
+    required: false
+    default: ""
+  github-token:
+    description: "A token that can write to pull requests (`github-token: ${{ github.token }}`, with `permissions: pull-requests: write` on the job). With it, what the change does is posted as one comment on the pull request and the same comment is edited on later pushes. Without it nothing is posted; the job's summary has it either way."
+    required: false
+    default: ""
+  endpoint:
+    description: Where the check answers.
+    required: false
+    default: https://workflow.muoto.xyz/api/check
+runs:
+  using: node24
+  main: check.js

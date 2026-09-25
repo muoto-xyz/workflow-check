@@ -1,0 +1,9 @@
+{
+  "name": "workflow-check",
+  "private": true,
+  "type": "module",
+  "description": "The workflow check as a GitHub Action: one step before a deploy.",
+  "bin": {
+    "workflow-check": "cli.js"
+  }
+}
