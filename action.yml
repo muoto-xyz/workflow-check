@@ -14,11 +14,11 @@ inputs:
     required: false
     default: new
   key:
-    description: "Your team's key, from a repository secret (`key: ${{ secrets.MUOTO_KEY }}`). Each file read spends one of the checks your team bought. Without it the step uses the free check, which has no guarantees."
+    description: "Your team's key, from a repository secret (for example a secret named MUOTO_KEY; the README shows the line). Each file read spends one of the checks your team bought. Without it the step uses the free check, which has no guarantees."
     required: false
     default: ""
   github-token:
-    description: "A token that can write to pull requests (`github-token: ${{ github.token }}`, with `permissions: pull-requests: write` on the job). With it, what the change does is posted as one comment on the pull request and the same comment is edited on later pushes. Without it nothing is posted; the job's summary has it either way."
+    description: "A token that can write to pull requests (the job's own GitHub token, with `permissions: pull-requests: write` on the job; the README shows the line). With it, what the change does is posted as one comment on the pull request and the same comment is edited on later pushes. Without it nothing is posted; the job's summary has it either way."
     required: false
     default: ""
   endpoint:
