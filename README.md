@@ -11,7 +11,7 @@ anyone start a write. Each finding is shown on the file, at the line of the node
 Add one step in front of your deploy, after the checkout your workflow already has:
 
 ```yaml
-- uses: actions/checkout@v4
+- uses: actions/checkout@v7
 - uses: muoto-xyz/workflow-check@v1
 ```
 
@@ -90,7 +90,7 @@ permissions:
   contents: read
   pull-requests: write
 steps:
-  - uses: actions/checkout@v4
+  - uses: actions/checkout@v7
   - uses: muoto-xyz/workflow-check@v1
     with:
       github-token: ${{ github.token }}
