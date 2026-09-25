@@ -14,7 +14,7 @@ inputs:
     required: false
     default: new
   key:
-    description: Your team's key, from a repository secret (`key: ${{ secrets.MUOTO_KEY }}`). Each file read spends one of the checks your team bought. Without it the step uses the free check, which has no guarantees.
+    description: "Your team's key, from a repository secret (`key: ${{ secrets.MUOTO_KEY }}`). Each file read spends one of the checks your team bought. Without it the step uses the free check, which has no guarantees."
     required: false
     default: ""
   github-token:
